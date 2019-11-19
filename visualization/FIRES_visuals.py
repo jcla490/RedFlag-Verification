@@ -8,8 +8,7 @@ import numpy as np
 with open('data/Fires_Northwest.json') as e:
     fires = json.load(e)
 
-##############################
-#C##########################################################################################
+########################################################################################################################
 # YEAR FREQUENCY OF FIRES                                                                                              #
 ########################################################################################################################
 def fires_by_year(fires):
@@ -24,7 +23,7 @@ def fires_by_year(fires):
     plt.xlabel("Year")
     plt.show()
 
-# fires_by_year(fires)
+fires_by_year(fires)
 
 ########################################################################################################################
 # MONTH FREQUENCY OF FIRES                                                                                             #
@@ -149,7 +148,7 @@ def fires_by_forest(fires):
     plt.xlabel("Office")
     plt.show()
 
-fires_by_forest(fires)
+# fires_by_forest(fires)
 
 ########################################################################################################################
 # AVG SIZES FOR FIRES IN WFO                                                                                           #
@@ -236,3 +235,5 @@ def waz687_prob(fires):
     print(len(fire_hits) / (len(fire_hits) + len(fire_nums)))
 
 # waz687_prob(fires)
+
+#what is actually wrong
