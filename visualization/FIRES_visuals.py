@@ -1,3 +1,4 @@
+from LARGE_FIRES_visuals import large_fires
 from collections import Counter
 import datetime
 import json
@@ -17,32 +18,45 @@ def fires_by_year(fires):
         years.append(str(fire['DISC_DATE'])[:4])
     year_count = Counter(years)
     print(year_count)
-    plt.scatter(year_count.keys(), year_count.values(), edgecolor='black', linewidth=1.0)
-    plt.title("Frequency of Fires by Year")
-    plt.ylabel("Number of Fires")
-    plt.xlabel("Year")
-    plt.show()
+    # plt.scatter(year_count.keys(), year_count.values(), edgecolor='black', linewidth=1.0)
+    # plt.title("Frequency of Fires by Year")
+    # plt.ylabel("Number of Fires")
+    # plt.xlabel("Year")
+    # plt.savefig('graphics/fires_by_year.png', dpi=600)
+    # plt.show()
+    return year_count
 
-fires_by_year(fires)
+years = fires_by_year(fires)
 
 ########################################################################################################################
 # MONTH FREQUENCY OF FIRES                                                                                             #
 ########################################################################################################################
-def fires_by_month(fires):
+def fires_by_month(fires, years, largefires):
     months = []
+    lf_months = []
+    lf_years = []
+    acres_in = 0
+    in_count = 0
+    out_count = 0
+    acres_out = 0
     for fire in fires:
         months.append(str(fire['DISC_DATE'])[4:6])
-    month_count = Counter(sorted(months))
-    print(month_count)
-    fig = plt.figure(figsize=(8, 3))
-    ax0 = plt.subplot2grid((1, 3), (0, 0), colspan=2)
-    ax1 = plt.subplot2grid((1, 3), (0, 2))
+        if str(fire['DISC_DATE'])[4:6] in ['06', '07', '08', '09', '10']:
+            acres_in += fire['SIZE_AC']
+        else:
+            acres_out += fire['SIZE_AC']
 
-    ax0.bar(month_count.keys(), month_count.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1)
-    # plt.title("Frequency of Fires by Month")
-    ax0.set_ylabel("Number of Fires", fontname='Helvetica Neue')
-    ax0.set_xlabel("Month", fontname='Helvetica Neue')
-    ax0.title.set_text('(a) Fires by Month')
+    for lf in largefires:
+        lf_months.append(str(lf['DISC_DATE'])[4:6])
+
+    for lf in largefires:
+        lf_years.append(str(lf['DISC_DATE'])[:4])
+
+    acres_in_perc = acres_in / (acres_in + acres_out)
+
+    month_count = Counter(sorted(months))
+    lf_count = Counter(sorted(lf_months))
+    lf_year_count = Counter(lf_years)
 
     causes = []
     for fire in fires:
@@ -53,29 +67,105 @@ def fires_by_month(fires):
         elif fire['STAT_CAUSE'] == 13:
             causes.append('Missing')
 
-    month_count = Counter(sorted(causes))
-    print(month_count)
-    print(list(month_count.keys()))
-    ax1.bar(month_count.keys(), month_count.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1)
-    # plt.title("Frequency of Fires by Month")
-    # axs[1].set_ylabel("Causes")
-    ax1.set_xlabel("Cause", fontname='Helvetica Neue')
-    ax1.title.set_text('(b) Fires by Cause Type')
+    cause_count = Counter(sorted(causes))
+
+    lf_causes = []
+    for lf in largefires:
+        if lf['STAT_CAUSE'] in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+            lf_causes.append('Human')
+        elif lf['STAT_CAUSE'] == 1:
+            lf_causes.append('Lightning')
+        elif lf['STAT_CAUSE'] == 13:
+            lf_causes.append('Missing')
+
+    lf_cause_count = Counter(sorted(lf_causes))
+
+    forest = []
+    for fire in fires:
+        if fire['FORESTED'] == 'yes':
+            forest.append('Forested')
+        else:
+            forest.append('Non-Forested')
+    forest_count = Counter(forest)
+
+    lf_forest = []
+    for lf in largefires:
+        if lf['FORESTED'] == 'yes':
+            lf_forest.append('Forested')
+        else:
+            lf_forest.append('Non-Forested')
+    lf_forest_count = Counter(lf_forest)
+
+    fig = plt.figure(figsize=(8.5, 10))
+
+    ax0 = plt.subplot2grid((2, 2), (0, 0), colspan=1, rowspan=1)
+    ax1 = plt.subplot2grid((2, 2), (0, 1), colspan=1, rowspan=1)
+    ax2 = plt.subplot2grid((2, 2), (1, 0), colspan=1, rowspan=1)
+    ax3 = plt.subplot2grid((2, 2), (1, 1), colspan=1, rowspan=1)
+
+    ax0.bar(sorted(years.keys()), years.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1, label='All Fires')
+    ax0.bar(sorted(lf_year_count.keys()), lf_year_count.values(), color='red', edgecolor='black', linewidth=1.0, width=1, label='90th Percentile Fires')
+    ax0.set_yscale('log')
+    ax0.title.set_text('(a) Occurrence Year')
+    ax0.set_xlabel('Year')
+    ax0.set_ylim(10, 100000)
+
+    for tick in ax0.get_xticklabels():
+        tick.set_fontsize(8)    
+    for tick in ax0.get_yticklabels():
+        tick.set_fontsize(8)   
+
+    ax1.bar(month_count.keys(), month_count.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1, label='All Fires')
+    ax1.bar(lf_count.keys(), lf_count.values(), color='red', edgecolor='black', linewidth=1.0, width=1, label='90th Percentile Fires')
+    ax1.set_yscale('log')
+    ax1.set_xlabel('Month')
+    ax1.title.set_text('(b) Occurrence Month')
+    ax1.set_ylim(10, 100000)
 
     for tick in ax1.get_xticklabels():
-        tick.set_fontname("Helvetica Neue")
+        tick.set_fontsize(8)    
     for tick in ax1.get_yticklabels():
-        tick.set_fontname("Helvetica Neue")
-    for tick in ax0.get_xticklabels():
-        tick.set_fontname("Helvetica Neue")
-    for tick in ax0.get_yticklabels():
-        tick.set_fontname("Helvetica Neue")
+        tick.set_fontsize(8)   
 
-    plt.tight_layout()
-    plt.savefig('fires_graph.png', dpi=600)
+    ax2.bar(cause_count.keys(), cause_count.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1, label='All Fires')
+    ax2.bar(lf_cause_count.keys(), lf_cause_count.values(), color='red', edgecolor='black', linewidth=1.0, width=1, label='90th Percentile Fires')
+    ax2.set_yscale('log')
+    ax2.set_xlabel('Cause')
+    ax2.title.set_text('(c) Ignition Cause')
+    ax2.set_ylim(10, 100000)
 
-fires_by_month(fires)
+    for tick in ax2.get_xticklabels():
+        tick.set_fontsize(8)    
+    for tick in ax2.get_yticklabels():
+        tick.set_fontsize(8)   
 
+    ax3.bar(forest_count.keys(), forest_count.values(), color='#337CBA', edgecolor='black', linewidth=1.0, width=1, label='All Fires')
+    ax3.bar(lf_forest_count.keys(), lf_forest_count.values(), color='red', edgecolor='black', linewidth=1.0, width=1, label='90th Percentile Fires')
+    ax3.set_yscale('log')
+    ax3.set_xlabel('Forest Type')
+    ax3.title.set_text('(d) Forested / Non-Forested')
+    ax3.set_ylim(10, 100000)
+
+    for tick in ax3.get_xticklabels():
+        tick.set_fontsize(8)    
+    for tick in ax3.get_yticklabels():
+        tick.set_fontsize(8)   
+
+    handles, labels = ax3.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center')
+    plt.subplots_adjust(left=0.10, right=0.99, top=0.88, hspace=0.3)
+    fig.text(0.03, 0.75, 'Number of Fires\nLg(x)', ha='center', va='center', rotation='vertical')
+    fig.text(0.03, 0.30, 'Number of Fires\nLg(x)', ha='center', va='center', rotation='vertical')
+    fig.text(0.1, 0.96, 'Characteristics of Fires in the Northwestern U.S.\n(2006 - 2015)', ha='left', va='center', fontsize=16)
+    plt.savefig('graphics/fires_mega_plot.png', dpi=600)
+    # plt.tight_layout()
+    plt.show()
+ 
+fires_by_month(fires, years, large_fires)
+
+########################################################################################################################
+# FIRE FREQUENCY BY CAUSE                                                                                              #
+########################################################################################################################
 def fires_by_cause(fires):
     ltng_codes = ['1']
     human_codes = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
@@ -94,6 +184,7 @@ def fires_by_cause(fires):
     # plt.title("Frequency of Fires by Month")
     plt.ylabel("Number of Fires")
     plt.xlabel("Cause Type", fontsize=14)
+    plt.savefig('graphics/fires_by_cause.png', dpi=600)
     plt.show()
 
 # fires_by_cause(fires)
@@ -111,6 +202,7 @@ def fires_by_wfo(fires):
     plt.title("Frequency of Fires by Office")
     plt.ylabel("Number of Fires")
     plt.xlabel("Office")
+    plt.savefig('graphics/fires_by_wfo.png', dpi=600)
     plt.show()
 
 # fires_by_wfo(fires)
@@ -146,6 +238,7 @@ def fires_by_forest(fires):
     plt.title("Frequency of Fires Classified as Forested")
     plt.ylabel("Number of Fires")
     plt.xlabel("Office")
+    plt.savefig('graphics/fires_by_forest.png', dpi=600)
     plt.show()
 
 # fires_by_forest(fires)
@@ -168,6 +261,7 @@ def fires_avg_size(fires):
     plt.title("Average Fire Size by WFO")
     plt.ylabel("Average Size of Fires")
     plt.xlabel("Office")
+    plt.savefig('graphics/fires_by_avg_size.png', dpi=600)
     plt.show()
 
 # fires_avg_size(fires)
@@ -190,6 +284,7 @@ def fires_90_size(fires):
     plt.title("90th Percentile Fire Sizes by WFO")
     plt.ylabel("90th Percentile Size of Fires")
     plt.xlabel("Office")
+    plt.savefig('graphics/fires_by_90thsize.png', dpi=600)
     plt.show()
 
 # fires_90_size(fires)
@@ -213,6 +308,8 @@ def fires_size_erc_perc(fires):
     plt.title("Average Size when ERC >= 90th Percentile by WFO")
     plt.ylabel("Average Size")
     plt.xlabel("Office")
+    plt.savefig('graphics/fires_by_size_90th_erc.png', dpi=600)
+
     plt.show()
 
 # fires_size_erc_perc(fires)
@@ -235,5 +332,3 @@ def waz687_prob(fires):
     print(len(fire_hits) / (len(fire_hits) + len(fire_nums)))
 
 # waz687_prob(fires)
-
-#what is actually wrong

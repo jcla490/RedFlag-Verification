@@ -4,7 +4,7 @@ import json
 import matplotlib.pyplot as plt
 
 # Global JSON data files
-with open('../Data/RFWs_Northwest.json') as e:
+with open('data/RFWs_Northwest.json') as e:
     rfws = json.load(e)
 
 
@@ -21,6 +21,7 @@ def rfws_by_year(rfws):
     plt.title("Frequency of RFWs by Year")
     plt.ylabel("Number of Forecasts")
     plt.xlabel("Year")
+    plt.savefig('graphics/rfws_by_year.png', dpi=600)
     plt.show()
 
 rfws_by_year(rfws)
@@ -38,6 +39,7 @@ def rfws_by_month(rfws):
     plt.title("Frequency of RFWs by Month")
     plt.ylabel("Number of Forecasts")
     plt.xlabel("Month")
+    plt.savefig('graphics/rfws_by_month.png', dpi=600)
     plt.show()
 
 rfws_by_month(rfws)
@@ -55,6 +57,7 @@ def rfws_by_wfo(rfws):
     plt.title("Frequency of Red Flag Warnings Issued by Office")
     plt.ylabel("Number of Forecasts")
     plt.xlabel("Office")
+    plt.savefig('graphics/rfws_by_wfo.png', dpi=600)
     plt.show()
 
 rfws_by_wfo(rfws)
@@ -72,6 +75,7 @@ def rfws_by_zone(rfws):
     plt.title("Frequency of Red Flag Warnings Issued by Zone")
     plt.ylabel("Number of Forecasts")
     plt.xlabel("Zone")
+    plt.savefig('graphics/rfws_by_zone.png', dpi=600)
     plt.show()
 
 rfws_by_zone(rfws)
@@ -93,6 +97,7 @@ def rfws_length(rfws):
     plt.ylabel('Frequency')
     plt.xlabel('Duration of Red Flag Event (Hours)')
     plt.xticks([0, 3, 6, 12, 18, 24])
+    plt.savefig('graphics/rfws_by_duration.png', dpi=600)
     plt.show()
 
 rfws_length(rfws)
