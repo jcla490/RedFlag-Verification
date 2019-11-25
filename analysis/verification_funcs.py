@@ -35,7 +35,7 @@ class VerifySkill:
             duration (int): Specify either 6, 12, 18, or 24 to see only matching RFWs with event durations between these ranges. 
             perc_size (int): The percentile value for which returned fires should be above. 
 
-        Returns: None, although it prepares self.rfws and self.fires for skill_calculator()
+        Returns: None, although it prepares self.rfws and self.fires for other methods.
         """
 
         start_rfw_len = len(self.rfws)
@@ -294,20 +294,20 @@ class VerifySkill:
 
     def gen_skill_scores(self):
 
-        FORECAST_DICT = self.forecast_skill_scores()
-        CLIMO_DICT = self.climo_skill_scores()
+        self.FORECAST_DICT = self.forecast_skill_scores()
+        self.CLIMO_DICT = self.climo_skill_scores()
 
-        SKILL_DICT = {
-            'BIAS_SS': (FORECAST_DICT['BIAS'] - CLIMO_DICT['BIAS']) / (1 - CLIMO_DICT['BIAS']),
-            'POD_SS': (FORECAST_DICT['POD'] - CLIMO_DICT['POD']) / (1 - CLIMO_DICT['POD']),
-            'FAR_SS': (FORECAST_DICT['FAR'] - CLIMO_DICT['FAR']) / (0 - CLIMO_DICT['FAR']),
-            'SR_SS': (FORECAST_DICT['SR'] - CLIMO_DICT['SR']) / (1 - CLIMO_DICT['SR']),
-            'TS_SS': (FORECAST_DICT['TS'] - CLIMO_DICT['TS']) / (1 - CLIMO_DICT['TS']),
-            'ETS': (FORECAST_DICT['HITS'] - CLIMO_DICT['HITS']) / (FORECAST_DICT['HITS'] + FORECAST_DICT['MISSES'] + FORECAST_DICT['FALSE_ALARMS'] - CLIMO_DICT['HITS'])
+        self.SKILL_DICT = {
+            'BIAS_SS': (self.FORECAST_DICT['BIAS'] - self.CLIMO_DICT['BIAS']) / (1 - self.CLIMO_DICT['BIAS']),
+            'POD_SS': (self.FORECAST_DICT['POD'] - self.CLIMO_DICT['POD']) / (1 - self.CLIMO_DICT['POD']),
+            'FAR_SS': (self.FORECAST_DICT['FAR'] - self.CLIMO_DICT['FAR']) / (0 - self.CLIMO_DICT['FAR']),
+            'SR_SS': (self.FORECAST_DICT['SR'] - self.CLIMO_DICT['SR']) / (1 - self.CLIMO_DICT['SR']),
+            'TS_SS': (self.FORECAST_DICT['TS'] - self.CLIMO_DICT['TS']) / (1 - self.CLIMO_DICT['TS']),
+            'ETS': (self.FORECAST_DICT['HITS'] - self.CLIMO_DICT['HITS']) / (self.FORECAST_DICT['HITS'] + self.FORECAST_DICT['MISSES'] + self.FORECAST_DICT['FALSE_ALARMS'] - self.CLIMO_DICT['HITS'])
         }
 
         print("\nSKILL SCORES AGAINST RANDOM CLIMATOLOGY")
-        print("BIAS_SS: %f, POD_SS: %f, FAR_SS: %f, SR_SS: %f, TS_SS: %f, ETS: %f" % (SKILL_DICT['BIAS_SS'], SKILL_DICT['POD_SS'], SKILL_DICT['FAR_SS'], SKILL_DICT['SR_SS'], 
-        SKILL_DICT['TS_SS'], SKILL_DICT['ETS']))
+        print("BIAS_SS: %f, POD_SS: %f, FAR_SS: %f, SR_SS: %f, TS_SS: %f, ETS: %f" % (self.SKILL_DICT['BIAS_SS'], self.SKILL_DICT['POD_SS'], self.SKILL_DICT['FAR_SS'], self.SKILL_DICT['SR_SS'], 
+        self.SKILL_DICT['TS_SS'], self.SKILL_DICT['ETS']))
 
         return

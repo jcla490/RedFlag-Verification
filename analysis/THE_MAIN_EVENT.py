@@ -10,3 +10,5 @@ verify.query_params(20060101, 20151231, perc_size=80, cause='lightning')
 # verify.forecast_skill_scores()
 # verify.climo_skill_scores()
 verify.gen_skill_scores()
+
+print(verify.SKILL_DICT)
