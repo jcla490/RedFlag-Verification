@@ -2,3 +2,5 @@
 .vscode/launch.json
 /Users/joshuaclark/Desktop/RFW_Northwest_Verify/data/old_data_dump/2006_2015_lower48_allRFWs_allActions.json
 data/old_data_dump/2006_2git 015_lower48_allRFWs_allActions.json
+.vscode/*
+analysis/__pycache__/
