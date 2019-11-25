@@ -231,7 +231,6 @@ class VerifySkill:
                 random_year = random.choice(leap_years)
             rfwday = rfwday.replace(year=random_year).strftime('%Y%m%d')
             climo_rfws.add((rfwday, rfw[1]))
-        print(len(climo_rfws))
 
         # Get exact hits
         exact_matches = climo_rfws.intersection(fire_days)
