@@ -12,6 +12,27 @@ plt.style.use('seaborn')
 with open('data/Fires_Northwest.json') as e:
     fires = json.load(e)
 
+human_count = 0
+ltng_count = 0
+human_acres = 0
+ltng_acres =0
+
+for fire in fires:
+    #human
+    if fire['STAT_CAUSE'] in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+        human_count += 1
+        human_acres += fire['SIZE_AC']
+    # lightning
+    if fire['STAT_CAUSE'] == 1:
+        ltng_count += 1
+        ltng_acres += fire['SIZE_AC']
+
+human_perc_occ = human_count / (human_count + ltng_count)
+human_perc_burned = human_acres / (human_acres + ltng_acres)
+ltng_perc_occ = ltng_count / (human_count + ltng_count)
+ltng_perc_burned = ltng_acres / (human_acres + ltng_acres)
+print(human_perc_occ, human_perc_burned,  ltng_perc_occ, ltng_perc_burned)
+
 ########################################################################################################################
 # YEAR FREQUENCY OF FIRES                                                                                              #
 ########################################################################################################################
@@ -29,7 +50,7 @@ def fires_by_year(fires):
     # plt.show()
     return year_count
 
-years = fires_by_year(fires)
+# years = fires_by_year(fires)
 
 ########################################################################################################################
 # MONTH FREQUENCY OF FIRES                                                                                             #
@@ -161,7 +182,7 @@ def fires_by_month(fires, years, largefires):
     # plt.tight_layout()
     plt.show()
  
-fires_by_month(fires, years, large_fires)
+# fires_by_month(fires, years, large_fires)
 
 ########################################################################################################################
 # FIRE FREQUENCY BY CAUSE                                                                                              #
