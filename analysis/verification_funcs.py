@@ -42,6 +42,15 @@ class VerifySkill:
         start_rfw_len = len(self.rfws)
         start_fires_len = len(self.fires)
 
+        # Reduce datasets to WFOs specified
+        if 'wfo' in kwargs:
+            if type(kwargs['wfo']) is list:
+                self.rfws = [rfw for rfw in self.rfws if rfw['WFO'] in kwargs['wfo']]
+                self.fires = [fire for fire in self.fires if fire['WFO'] in kwargs['wfo']]
+            else: 
+                self.rfws = [rfw for rfw in self.rfws if rfw['WFO'] == kwargs['wfo']]
+                self.fires = [fire for fire in self.fires if fire['WFO'] == kwargs['wfo']]
+
         # First get percentile sizes so we don't calculate based off a smol dataset
         if 'perc_size' in kwargs:
             zone_sizes = {}
@@ -52,19 +61,29 @@ class VerifySkill:
                     zone_sizes[fire['UGC_ZONE']] = [fire['SIZE_AC']]
 
             perc_list = []
+            med_list = []
             for k, v in zone_sizes.items():
                 m = np.array(v)
-                p = round(np.percentile(m, kwargs['perc_size']), 2)
+                p = np.percentile(m, kwargs['perc_size'])
                 perc_list.append({k: p})
 
             print(str(kwargs['perc_size']) + 'th percentile fire sizes for the zones requested are:', perc_list)
+            size_list = []
+            for zone in perc_list:
+                size_list.append(list(zone.values())[0])
+            print(size_list)
+            # print(sum(size_list)/len(size_list))
+
 
             fires_dummy = []
+            size_dummy = []
             for fire in self.fires:
                 for zone in perc_list:
                     if fire['UGC_ZONE'] in zone:
                         if fire['SIZE_AC'] >= zone[fire['UGC_ZONE']]:
                             fires_dummy.append(fire)
+                            size_dummy.append(fire['SIZE_AC'])
+            print(np.mean(size_dummy))
 
             self.fires = fires_dummy
 
@@ -72,17 +91,8 @@ class VerifySkill:
         self.rfws = [rfw for rfw in self.rfws if datetime.strptime(str(start_date), '%Y%m%d') <=
                     datetime.strptime(rfw['FLAT_DATE'], '%Y%m%d') <= datetime.strptime(str(end_date), '%Y%m%d')]
         self.fires = [fire for fire in self.fires if datetime.strptime(str(start_date), '%Y%m%d') <=
-                    datetime.strptime(str(fire['DISC_DATE'])[:8], '%Y%m%d') <= datetime.strptime(str(end_date), '%Y%m%d')]
-
-        # Reduce datasets to WFOs specified
-        if 'wfo' in kwargs:
-            if type(kwargs['wfo']) is list:
-                self.rfws = [rfw for rfw in self.rfws if rfw['WFO'] in kwargs['wfo']]
-                self.fires = [fire for fire in self.fires if fire['WFO'] in kwargs['wfo']]
-            else: 
-                self.rfws = [rfw for rfw in self.rfws if rfw['WFO'] == kwargs['wfo']]
-                self.fires = [fire for fire in self.fires if fire['WFO'] == kwargs['wfo']]
-
+                    datetime.strptime(str(fire['DISC_DATE'])[:8], '%Y%m%d') <= datetime.strptime(str(end_date), '%Y%m%d') + timedelta(days=1)]
+        
         # Reduce datasets to FWZs specified
         if 'zone' in kwargs:
             if type(kwargs['zone']) is list:
@@ -108,8 +118,8 @@ class VerifySkill:
 
         if 'nfdrs_param' in kwargs:
             fd_index, fd_operator, fd_threshold = kwargs['nfdrs_param'][0], kwargs['nfdrs_param'][1], kwargs['nfdrs_param'][2]
-            if fd_operator == '<=':
-                self.fires = [fire for fire in self.fires if fire[fd_index] <= fd_threshold]
+            if fd_operator == '<':
+                self.fires = [fire for fire in self.fires if fire[fd_index] < fd_threshold]
             elif fd_operator == '==':
                 self.fires = [fire for fire in self.fires if fire[fd_index] == fd_threshold]
             elif fd_operator == '>=':
@@ -136,67 +146,56 @@ class VerifySkill:
                     if 18 < hours <= 24:
                         rfws_dummy.append(rfw)
             self.rfws = rfws_dummy
-
+        print("Number of fires before reduced to days only is {}".format(len(self.fires)))
         # Unique fire days and rfw days only!
         self.fire_days = set([(str(fire['DISC_DATE'])[:8], fire['UGC_ZONE']) for fire in self.fires])
         self.rfw_days = set([(rfw['FLAT_DATE'], rfw['NWS_UGC']) for rfw in self.rfws])
-
         fin_rfw_len = len(self.rfw_days)
         fin_fires_len = len(self.fire_days)
 
-        # print('Query_params() complete. Results:')
-        # print('RFWs reduced from %i to %i' % (start_rfw_len, fin_rfw_len))
-        # print('Fires reduced from %i to %i' % (start_fires_len, fin_fires_len))
+        print('\nELIMINATE MULTIPLE FIRES/RFWS FOR SAME DAY/ZONE:')
+        print('RFWs reduced from %i to %i' % (start_rfw_len, fin_rfw_len))
+        print('Fires reduced from %i to %i' % (start_fires_len, fin_fires_len))
 
         return
 
     def forecast_skill_scores(self):
-        # print('FORECAST_METHOD')
-        # print(len(self.fire_days), len(self.rfw_days))
-        # Get exact hits
+
         exact_matches = self.rfw_days.intersection(self.fire_days)
-        # print("First day matches: " + str(len(exact_matches)))
-
-        # Remove them from main records
-        for match in exact_matches:
-            if match in self.fire_days:
-                self.fire_days.remove(match)
-            if match in self.rfw_days:
-                self.rfw_days.remove(match)
-
-        # print("After first day sizes: FIRE_DAYS = " + str(len(self.fire_days)) + ", RFW_DAYS = " + str(len(self.rfw_days)))
-
-        # Get hits on fires that occurred one day after
-        day_2_fires = set()
-        for fire in self.fire_days:
-            day_2_fires.add(((datetime.strptime(fire[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), fire[1]))
-        secondary_matches = self.rfw_days.intersection(day_2_fires)
+        # increment RFW by 1 day
+        day_2_rfws = set()
+        for rfw in self.rfw_days:
+            day_2_rfws.add(((datetime.strptime(rfw[0], '%Y%m%d') + timedelta(days=1)).strftime('%Y%m%d'), rfw[1])) 
         
-        # print("Second day matches: " + str(len(secondary_matches)))
+        day_2_matches = day_2_rfws.intersection(self.fire_days)
 
-        # Remove these from main records
-        for fire in self.fire_days.copy():
-            if (((datetime.strptime(fire[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d')), fire[1]) in secondary_matches:
-                self.fire_days.remove(fire)
-        for match in secondary_matches:
-            if match in self.rfw_days:
-                self.rfw_days.remove(match)
-                # and also remove ones that would have matched on the previous day
-                # rebuild tuple with new date
-                new_match = ((datetime.strptime(match[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), match[1])
-                if new_match in self.rfw_days:
-                    self.rfw_days.remove(new_match)
+        day2matches_corr = set()
+        for d2match in day_2_matches:
+            day2matches_corr.add(((datetime.strptime(d2match[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), d2match[1]))
 
-        # print("After second day sizes: FIRE_DAYS = " + str(len(self.fire_days)) + ", RFW_DAYS = " + str(len(self.rfw_days)))
+        rfw_matches = exact_matches | day2matches_corr
+        fire_matches = exact_matches | day_2_matches
 
-        HITS = len(exact_matches) + len(secondary_matches)  # this is hits for first day and second
+        for match in rfw_matches:
+            self.rfw_days.remove(match)
+
+        for match in fire_matches:
+            self.fire_days.remove(match)
+
+        # print("\n\nFirst day matches: " + str(len(rfw_matches)))
+        # print("New set sizes: RFW_DAYS = " + str(len(self.rfw_days)) + ", FIRE_DAYS = " + str(len(self.fire_days)))
+
+        HITS = len(rfw_matches)  # this is hits for first day and second
         MISSES = len(self.fire_days) # and exact misses
         FALSE_ALARMS = len(self.rfw_days) # and exact false alarms
 
+        print("\nFORECAST - BASIC SKILL METRICS")
+        print("HITS: %i, MISSES: %i, FALSE ALARMS: %i" % (HITS, MISSES, FALSE_ALARMS))
         BIAS = (HITS + FALSE_ALARMS) / (HITS + MISSES)
         POD = HITS / (HITS + MISSES)
         FAR = FALSE_ALARMS / (HITS + FALSE_ALARMS)
         CSI = HITS / (HITS + MISSES + FALSE_ALARMS)
+
 
         self.FORECAST_DICT = {
             'HITS': HITS,
@@ -207,20 +206,19 @@ class VerifySkill:
             'FAR': FAR,
             'CSI': CSI
         }
-
-        print("\nFORECAST - BASIC SKILL METRICS")
-        print("HITS: %i, MISSES: %i, FALSE ALARMS: %i" % (HITS, MISSES, FALSE_ALARMS))
-        print("BIAS: %f, POD: %f, FAR: %f, CSI: %f" % (BIAS, POD, FAR, CSI))
+        
+        print("POD: %f, FAR: %f, CSI: %f" % (POD, FAR, CSI))
 
         return self.FORECAST_DICT
 
-    def climo_skill_scores(self):
+    def climo_skill_scores(self, forecast_dict):
         climo_score_list = []
         for i in range(100):
             # Recreate rfw_days and fire_days since we messed with em previously
             # Unique fire days and rfw days only!
             fire_days = set([(str(fire['DISC_DATE'])[:8], fire['UGC_ZONE']) for fire in self.fires])
             rfw_days = set([(rfw['FLAT_DATE'], rfw['NWS_UGC']) for rfw in self.rfws])
+
             # print('CLIMO_METHOD')
             # print(len(fire_days), len(rfw_days))
             
@@ -237,37 +235,29 @@ class VerifySkill:
                     random_year = random.choice(leap_years)
                 rfwday = rfwday.replace(year=random_year).strftime('%Y%m%d')
                 climo_rfws.add((rfwday, rfw[1]))
-
-            # Get exact hits
             exact_matches = climo_rfws.intersection(fire_days)
 
-            # Remove them from main records
-            for match in exact_matches:
-                if match in fire_days:
-                    fire_days.remove(match)
-                if match in climo_rfws:
-                    climo_rfws.remove(match)
-
-            # Get hits on fires that occurred one day after
-            day_2_fires = set()
-            for fire in fire_days:
-                day_2_fires.add(((datetime.strptime(fire[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), fire[1]))
-            secondary_matches = climo_rfws.intersection(day_2_fires)
+            # increment RFW by 1 day
+            day_2_rfws = set()
+            for rfw in climo_rfws:
+                day_2_rfws.add(((datetime.strptime(rfw[0], '%Y%m%d') + timedelta(days=1)).strftime('%Y%m%d'), rfw[1])) 
             
-            # Remove these from main records
-            for fire in fire_days.copy():
-                if (((datetime.strptime(fire[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d')), fire[1]) in secondary_matches:
-                    fire_days.remove(fire)
-            for match in secondary_matches:
-                if match in climo_rfws:
-                    climo_rfws.remove(match)
-                    # and also remove ones that would have matched on the previous day
-                    # rebuild tuple with new date
-                    new_match = ((datetime.strptime(match[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), match[1])
-                    if new_match in climo_rfws:
-                        climo_rfws.remove(new_match)
+            day_2_matches = day_2_rfws.intersection(fire_days)
 
-            HITS = len(exact_matches) + len(secondary_matches)  # this is hits for first day and second
+            day2matches_corr = set()
+            for d2match in day_2_matches:
+                day2matches_corr.add(((datetime.strptime(d2match[0], '%Y%m%d') - timedelta(days=1)).strftime('%Y%m%d'), d2match[1]))
+
+            rfw_matches = exact_matches | day2matches_corr
+            fire_matches = exact_matches | day_2_matches
+            for match in rfw_matches:
+                climo_rfws.remove(match)
+
+            for match in fire_matches:
+                fire_days.remove(match)
+
+
+            HITS = len(rfw_matches) # this is hits for first day and second
             MISSES = len(fire_days) # and exact misses
             FALSE_ALARMS = len(climo_rfws) # and exact false alarms
 
@@ -285,39 +275,43 @@ class VerifySkill:
                 'FAR': FAR,
                 'CSI': CSI
             }
-            
+            # print(CLIMO_DICT)
             climo_score_list.append(CLIMO_DICT)
             # print("\nCLIMO - BASIC SKILL METRICS")
             # print("HITS: %i, MISSES: %i, FALSE ALARMS: %i" % (HITS, MISSES, FALSE_ALARMS))
             # print("BIAS: %f, POD: %f, FAR: %f, CSI: %f" % (BIAS, POD, FAR, CSI))
 
-        bias_list, csi_list, pod_list, far_list = [], [], [], []
+        bias_list, csi_list, pod_list, far_list, sig_list = [], [], [], [], []
         for result in climo_score_list:
             bias_list.append(result['BIAS'])
             pod_list.append(result['POD'])
             far_list.append(result['FAR'])
             csi_list.append(result['CSI'])
+
+            sig_list.append((forecast_dict['POD'] - result['POD'])  / (1 - result['POD']))
         bias_med = stat.median(sorted(bias_list))
         pod_med = stat.median(sorted(pod_list))
         far_med = stat.median(sorted(far_list))
         csi_med = stat.median(sorted(csi_list))
+        sig_count = len([score for score in sig_list if score > 0])
 
         median_dict = {
                 'BIAS': bias_med,
                 'POD': pod_med,
                 'FAR': far_med,
-                'CSI': csi_med
+                'CSI': csi_med,
+                'SIG_TEST': sig_count
         }
 
-        # print("\nCLIMO - BASIC SKILL METRICS")
-        # print("BIAS: %f, POD: %f, FAR: %f, CSI: %f" % (bias_med, pod_med, far_med, csi_med))
+        print("\nCLIMO - BASIC SKILL METRICS")
+        print("POD: %f, FAR: %f, CSI: %f, SIG_NUM: %i" % (pod_med, far_med, csi_med, sig_count))
         return median_dict
 
 
     def gen_skill_scores(self):
 
         self.FORECAST_DICT = self.forecast_skill_scores()
-        self.CLIMO_DICT = self.climo_skill_scores()
+        self.CLIMO_DICT = self.climo_skill_scores(self.FORECAST_DICT)
 
         self.SKILL_DICT = {
             'BIAS_SS': (self.FORECAST_DICT['BIAS'] - self.CLIMO_DICT['BIAS']) / (1 - self.CLIMO_DICT['BIAS']),
@@ -327,6 +321,6 @@ class VerifySkill:
         }
 
         print("\nSKILL SCORES AGAINST RANDOM CLIMATOLOGY")
-        print("BIAS_SS: %f, POD_SS: %f, FAR_SS: %f, CSI_SS: %f" % (self.SKILL_DICT['BIAS_SS'], self.SKILL_DICT['POD_SS'], self.SKILL_DICT['FAR_SS'], self.SKILL_DICT['CSI_SS']))
+        print("POD_SS: %f, FAR_SS: %f, CSI_SS: %f" % (self.SKILL_DICT['POD_SS'], self.SKILL_DICT['FAR_SS'], self.SKILL_DICT['CSI_SS']))
 
         return

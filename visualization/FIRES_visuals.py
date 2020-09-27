@@ -206,7 +206,7 @@ def fires_by_cause(fires):
     plt.savefig('graphics/fires_by_cause.png', dpi=600)
     plt.show()
 
-# fires_by_cause(fires)
+fires_by_cause(fires)
 
 ########################################################################################################################
 # FIRE FREQUENCY BY WFO                                                                                                #
